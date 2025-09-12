@@ -107,12 +107,12 @@ Please contact us for any questions: https://www.opencap.ai/#contact
 
 # We provide a few examples for overground and treadmill activities.
 # Select which example you would like to run.
-session_type = 'overground' # Options are 'overground' and 'treadmill'.
-session_id = "4d5c3eb1-1a59-4ea1-9178-d3634610561c"
+session_type = "overground" # Options are 'overground' and 'treadmill'.
+session_id = "OpenCapData_ab7eb7cf-817d-4035-a30b-ee68773906cb"
 case = '0' # Change this to compare across settings.
 # Options are 'squat', 'STS', and 'jump'.
 if session_type == 'overground': 
-    trial_name = 'STS'
+    trial_name = 'Suhasno_2'
     if trial_name == 'squat': # Squat
         motion_type = 'squats'
         repetition = 1
@@ -122,6 +122,10 @@ if session_type == 'overground':
     elif trial_name == 'jump': # Jump  
         motion_type = 'jumping'
         time_window = [1.3, 2.2]
+    elif trial_name == "Suhasno_2": # Suhasno walking trial
+        motion_type = "walking"
+        time_window = [0.0, 1.0] # Adjust time window as needed for the trial
+        repetition = None # Repetition not needed for walking
 # Options are 'walk_1_25ms', 'run_2_5ms', and 'run_4ms'.
 elif session_type == 'treadmill': 
     trial_name = 'walk_1_25ms'
@@ -152,7 +156,7 @@ solveProblem = True
 analyzeResults = True
 
 # Path to where you want the data to be downloaded.
-dataFolder = os.path.join(baseDir, 'Data')
+dataFolder = baseDir # Set dataFolder to the base directory
 
 # %% Setup. 
 if not 'time_window' in locals():
@@ -165,7 +169,7 @@ if not 'contact_side' in locals():
     contact_side = 'all'
 settings = processInputsOpenSimAD(baseDir, dataFolder, session_id, trial_name, 
                                   motion_type, time_window, repetition,
-                                  treadmill_speed, contact_side)
+                                  treadmill_speed, contact_side, use_local_data=True)
 
 # %% Simulation.
 run_tracking(baseDir, dataFolder, session_id, settings, case=case, 

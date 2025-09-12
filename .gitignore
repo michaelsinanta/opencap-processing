@@ -4,7 +4,7 @@ __pycache__
 *.ipynb_checkpoints
 Data/*
 **/Data/
-
+OpenCapData_ab7eb7cf-817d-4035-a30b-ee68773906cb/*
 *DS_Store
 
 .vscode/*

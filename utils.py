@@ -37,14 +37,11 @@ import matplotlib.pyplot as plt
 from scipy.signal.windows import gaussian
 
 
-API_URL = get_api_url()
-API_TOKEN = get_token()
-
 def download_file(url, file_name):
     with urllib.request.urlopen(url) as response, open(file_name, 'wb') as out_file:
         shutil.copyfileobj(response, out_file)
 
-def get_session_json(session_id):
+def get_session_json(session_id, API_URL, API_TOKEN):
     resp = requests.get(
         API_URL + "sessions/{}/".format(session_id),
         headers = {"Authorization": "Token {}".format(API_TOKEN)})
@@ -64,7 +61,7 @@ def get_session_json(session_id):
     return sessionJson
     
 # Returns a list of all sessions of the user.
-def get_user_sessions():
+def get_user_sessions(API_URL, API_TOKEN):
     sessions = requests.get(
         API_URL + "sessions/valid/", 
         headers = {"Authorization": "Token {}".format(API_TOKEN)}).json()
@@ -73,7 +70,9 @@ def get_user_sessions():
 
 # Returns a list of all sessions of the user.
 # TODO: this also contains public sessions of other users.
-def get_user_sessions_all(user_token=API_TOKEN):
+def get_user_sessions_all(API_URL, API_TOKEN, user_token=None):
+    if user_token is None:
+        user_token = API_TOKEN
     sessions = requests.get(
         API_URL + "sessions/", 
         headers = {"Authorization": "Token {}".format(user_token)}).json()
@@ -81,7 +80,9 @@ def get_user_sessions_all(user_token=API_TOKEN):
     return sessions
 
 # Returns a list of all subjects of the user.
-def get_user_subjects(user_token=API_TOKEN):
+def get_user_subjects(API_URL, API_TOKEN, user_token=None):
+    if user_token is None:
+        user_token = API_TOKEN
     subjects = requests.get(
             API_URL + "subjects/", 
             headers = {"Authorization": "Token {}".format(user_token)}).json()
@@ -89,22 +90,24 @@ def get_user_subjects(user_token=API_TOKEN):
     return subjects
 
 # Returns a list of all sessions of a subject.
-def get_subject_sessions(subject_id, user_token=API_TOKEN):
+def get_subject_sessions(subject_id, API_URL, API_TOKEN, user_token=None):
+    if user_token is None:
+        user_token = API_TOKEN
     sessions = requests.get(
         API_URL + "subjects/{}/".format(subject_id),
         headers = {"Authorization": "Token {}".format(user_token)}).json()['sessions']
     
     return sessions
 
-def get_trial_json(trial_id):
+def get_trial_json(trial_id, API_URL, API_TOKEN):
     trialJson = requests.get(
         API_URL + "trials/{}/".format(trial_id),
         headers = {"Authorization": "Token {}".format(API_TOKEN)}).json()
     
     return trialJson
 
-def get_neutral_trial_id(session_id):
-    session = get_session_json(session_id)    
+def get_neutral_trial_id(session_id, API_URL, API_TOKEN):
+    session = get_session_json(session_id, API_URL, API_TOKEN)    
     neutral_ids = [t['id'] for t in session['trials'] if t['name']=='neutral']
     
     if len(neutral_ids)>0:
@@ -117,23 +120,23 @@ def get_neutral_trial_id(session_id):
     return neutralID 
  
 
-def get_calibration_trial_id(session_id):
-    session = get_session_json(session_id)
+def get_calibration_trial_id(session_id, API_URL, API_TOKEN):
+    session = get_session_json(session_id, API_URL, API_TOKEN)
     
     calib_ids = [t['id'] for t in session['trials'] if t['name'] == 'calibration']
                                                           
     if len(calib_ids)>0:
         calibID = calib_ids[-1]
     elif session['meta']['sessionWithCalibration']:
-        calibID = get_calibration_trial_id(session['meta']['sessionWithCalibration']['id'])
+        calibID = get_calibration_trial_id(session['meta']['sessionWithCalibration']['id'], API_URL, API_TOKEN)
     else:
         raise Exception('No calibration trial in session.')
     
     return calibID
 
-def get_camera_mapping(session_id, session_path):
-    calibration_id = get_calibration_trial_id(session_id)
-    trial = get_trial_json(calibration_id)
+def get_camera_mapping(session_id, session_path, API_URL, API_TOKEN):
+    calibration_id = get_calibration_trial_id(session_id, API_URL, API_TOKEN)
+    trial = get_trial_json(calibration_id, API_URL, API_TOKEN)
     resultTags = [res['tag'] for res in trial['results']]
 
     mappingPath = os.path.join(session_path,'Videos','mappingCamDevice.pickle')
@@ -143,9 +146,9 @@ def get_camera_mapping(session_id, session_path):
         download_file(mappingURL, mappingPath)
     
 
-def get_model_and_metadata(session_id, session_path):
-    neutral_id = get_neutral_trial_id(session_id)
-    trial = get_trial_json(neutral_id)
+def get_model_and_metadata(session_id, session_path, API_URL, API_TOKEN):
+    neutral_id = get_neutral_trial_id(session_id, API_URL, API_TOKEN)
+    trial = get_trial_json(neutral_id, API_URL, API_TOKEN)
     resultTags = [res['tag'] for res in trial['results']]
     
     # Metadata.
@@ -185,8 +188,8 @@ def get_model_name_from_metadata(sessionFolder,appendText='_scaled'):
     return modelName
 
         
-def get_motion_data(trial_id, session_path):
-    trial = get_trial_json(trial_id)
+def get_motion_data(trial_id, session_path, API_URL, API_TOKEN):
+    trial = get_trial_json(trial_id, API_URL, API_TOKEN)
     trial_name = trial['name']
     resultTags = [res['tag'] for res in trial['results']]
 
@@ -218,7 +221,7 @@ def get_motion_data(trial_id, session_path):
             download_file(settingsURL, settingsPath)
         
         
-def get_geometries(session_path, modelName='LaiUhlrich2022_scaled'):
+def get_geometries(session_path, modelName='LaiUhlrich2022_scaled', API_URL=None, API_TOKEN=None):
         
     geometryFolder = os.path.join(session_path, 'OpenSimData', 'Model', 'Geometry')
     try:
@@ -264,67 +267,69 @@ def import_metadata(filePath):
     
     return parsedYamlFile
     
-def download_kinematics(session_id, folder=None, trialNames=None):
-    
-    # Login to access opencap data from server. 
-    
+def download_kinematics(session_id, folder=None, trialNames=None, use_local_data=False):
+    # Get API URL and Token conditionally.
+    API_URL = get_api_url()
+    API_TOKEN = get_token(use_local_data=use_local_data)
+
     # Create folder.
     if folder is None:
         folder = os.getcwd()    
     os.makedirs(folder, exist_ok=True)
     
     # Model and metadata.
-    neutral_id = get_neutral_trial_id(session_id)
-    get_motion_data(neutral_id, folder)
-    modelName = get_model_and_metadata(session_id, folder)
-    # Remove extension from modelName
-    modelName = modelName.replace('.osim','')
-    
-    # Session trial names.
-    sessionJson = get_session_json(session_id)
-    sessionTrialNames = [t['name'] for t in sessionJson['trials']]
-    if trialNames != None:
-        [print(t + ' not in session trial names.') 
-         for t in trialNames if t not in sessionTrialNames]
-    
-    # Motion data.
-    loadedTrialNames = []
-    for trialDict in sessionJson['trials']:
-        if trialNames is not None and trialDict['name'] not in trialNames:
-            continue        
-        trial_id = trialDict['id']
-        get_motion_data(trial_id,folder)
-        loadedTrialNames.append(trialDict['name'])
+    if not use_local_data:
+        neutral_id = get_neutral_trial_id(session_id, API_URL, API_TOKEN)
+        get_motion_data(neutral_id, folder, API_URL, API_TOKEN)
+        modelName = get_model_and_metadata(session_id, folder, API_URL, API_TOKEN)
+        modelName = modelName.replace('.osim','')
         
-    # Remove 'calibration' and 'neutral' from loadedTrialNames.    
-    loadedTrialNames = [i for i in loadedTrialNames if i!='neutral' and i!='calibration']
+        sessionJson = get_session_json(session_id, API_URL, API_TOKEN)
+        sessionTrialNames = [t['name'] for t in sessionJson['trials']]
+        if trialNames != None:
+            [print(t + ' not in session trial names.') 
+             for t in trialNames if t not in sessionTrialNames]
         
-    # Geometries.
-    get_geometries(folder, modelName=modelName)
+        loadedTrialNames = []
+        for trialDict in sessionJson['trials']:
+            if trialNames is not None and trialDict['name'] not in trialNames:
+                continue        
+            trial_id = trialDict['id']
+            get_motion_data(trial_id,folder, API_URL, API_TOKEN)
+            loadedTrialNames.append(trialDict['name'])
+            
+        loadedTrialNames = [i for i in loadedTrialNames if i!='neutral' and i!='calibration']
+            
+        get_geometries(folder, modelName=modelName, API_URL=API_URL, API_TOKEN=API_TOKEN)
+    else:
+        session_path = os.path.join(folder, 'OpenCapData_' + session_id)
+        modelName = get_model_name_from_metadata(session_path) 
+        loadedTrialNames = [t.replace('.mot','') for t in os.listdir(os.path.join(session_path, 'OpenSimData', 'Kinematics')) if t.endswith('.mot') and t!='calibration.mot' and t!='neutral.mot']
+        loadedTrialNames = [t for t in loadedTrialNames if not t.startswith('_')] 
         
     return loadedTrialNames, modelName
 
 # Download pertinent trial data.
-def download_trial(trial_id, folder, session_id=None):
+def download_trial(trial_id, folder, session_id=None, API_URL=None, API_TOKEN=None):
     
-    trial = get_trial_json(trial_id)
+    trial = get_trial_json(trial_id, API_URL, API_TOKEN)
     if session_id is None:
         session_id = trial['session_id']
         
     os.makedirs(folder,exist_ok=True)
     
     # download model
-    get_model_and_metadata(session_id, folder)
+    get_model_and_metadata(session_id, folder, API_URL, API_TOKEN)
     
     # download trc and mot
-    get_motion_data(trial_id,folder)
+    get_motion_data(trial_id,folder, API_URL, API_TOKEN)
     
     return trial['name']
 
 
 # Get trial ID from name.
-def get_trial_id(session_id,trial_name):
-    session = get_session_json(session_id)
+def get_trial_id(session_id,trial_name, API_URL, API_TOKEN):
+    session = get_session_json(session_id, API_URL, API_TOKEN)
     
     trial_id = [t['id'] for t in session['trials'] if t['name'] == trial_name]
     
@@ -461,7 +466,7 @@ def numpy_to_storage(labels, data, storage_file, datatype=None):
 
 def download_videos_from_server(session_id,trial_id,
                              isCalibration=False, isStaticPose=False,
-                             trial_name= None, session_path = None):
+                             trial_name= None, session_path = None, API_URL=None, API_TOKEN=None):
     
     if session_path is None:
         data_dir = os.getcwd() 
@@ -486,7 +491,7 @@ def download_videos_from_server(session_id,trial_id,
         for k, video in enumerate(trial["videos"]):
             os.makedirs(os.path.join(session_path, "Videos", "Cam{}".format(k), "InputMedia", trial_name), exist_ok=True)
             video_path = os.path.join(session_path, "Videos", "Cam{}".format(k), "InputMedia", trial_name, trial_name + ".mov")
-            download_file(video["video"], video_path)                
+            download_file(video["video"], video_path)
             mappingCamDevice[video["device_id"].replace('-', '').upper()] = k
         with open(os.path.join(session_path, "Videos", 'mappingCamDevice.pickle'), 'wb') as handle:
             pickle.dump(mappingCamDevice, handle)
@@ -508,8 +513,8 @@ def download_videos_from_server(session_id,trial_id,
     return trial_name
    
     
-def get_calibration(session_id,session_path):
-    calibration_id = get_calibration_trial_id(session_id)
+def get_calibration(session_id,session_path, API_URL, API_TOKEN):
+    calibration_id = get_calibration_trial_id(session_id, API_URL, API_TOKEN)
 
     resp = requests.get("{}trials/{}/".format(API_URL,calibration_id),
                          headers = {"Authorization": "Token {}".format(API_TOKEN)})
@@ -525,16 +530,16 @@ def get_calibration(session_id,session_path):
     mapURL = trial['results'][calibResultTags.index('camera_mapping')]['media']
     mapLocalPath = os.path.join(videoFolder,'mappingCamDevice.pickle')
 
-    download_and_switch_calibration(session_id,session_path,calibTrialID=calibration_id)
+    download_and_switch_calibration(session_id,session_path,calibTrialID=calibration_id, API_URL=API_URL, API_TOKEN=API_TOKEN)
     
     # Download mapping
     if len(glob.glob(mapLocalPath)) == 0:
         download_file(mapURL,mapLocalPath)
                         
 
-def download_and_switch_calibration(session_id,session_path,calibTrialID = None):
+def download_and_switch_calibration(session_id,session_path,calibTrialID = None, API_URL=None, API_TOKEN=None):
     if calibTrialID == None:
-        calibTrialID = get_calibration_trial_id(session_id)
+        calibTrialID = get_calibration_trial_id(session_id, API_URL, API_TOKEN)
     resp = requests.get("https://api.opencap.ai/trials/{}/".format(calibTrialID),
                          headers = {"Authorization": "Token {}".format(API_TOKEN)})
     trial = resp.json()
@@ -563,7 +568,7 @@ def download_and_switch_calibration(session_id,session_path,calibTrialID = None)
                 download_file(calibImgURLs[cam + '_altSoln'],img_fileName)
                 
             
-def post_file_to_trial(filePath,trial_id,tag,device_id):
+def post_file_to_trial(filePath,trial_id,tag,device_id, API_URL, API_TOKEN):
     files = {'media': open(filePath, 'rb')}
     data = {
         "trial": trial_id,
@@ -575,7 +580,7 @@ def post_file_to_trial(filePath,trial_id,tag,device_id):
                          headers = {"Authorization": "Token {}".format(API_TOKEN)})
     files["media"].close()
 
-def post_video_to_trial(filePath,trial_id,device_id,parameters):
+def post_video_to_trial(filePath,trial_id,device_id,parameters, API_URL, API_TOKEN):
     files = {'video': open(filePath, 'rb')}
     data = {
         "trial": trial_id,
@@ -587,28 +592,28 @@ def post_video_to_trial(filePath,trial_id,device_id,parameters):
                          headers = {"Authorization": "Token {}".format(API_TOKEN)})
     files["video"].close()
 
-def delete_video_from_trial(video_id):
+def delete_video_from_trial(video_id, API_URL, API_TOKEN):
 
     requests.delete("{}videos/{}/".format(API_URL, video_id),
                         headers = {"Authorization": "Token {}".format(API_TOKEN)})
     
-def delete_results(trial_id, tag=None, resultNum=None):
+def delete_results(trial_id, tag=None, resultNum=None, API_URL=None, API_TOKEN=None):
     # Delete specific result number, or all results with a specific tag, or all results if tag==None
     if resultNum != None:
         resultNums = [resultNum]
     elif tag != None:
-        trial = get_trial_json(trial_id)
+        trial = get_trial_json(trial_id, API_URL, API_TOKEN)
         resultNums = [r['id'] for r in trial['results'] if r['tag']==tag]
         
     elif tag == None: 
-        trial = get_trial_json(trial_id)
+        trial = get_trial_json(trial_id, API_URL, API_TOKEN)
         resultNums = [r['id'] for r in trial['results']]
 
     for rNum in resultNums:
         requests.delete(API_URL + "results/{}/".format(rNum),
                         headers = {"Authorization": "Token {}".format(API_TOKEN)})
         
-def set_trial_status(trial_id, status):
+def set_trial_status(trial_id, status, API_URL, API_TOKEN):
 
     # Available statuses: 'done', 'error', 'stopped', 'reprocess'
     # 'processing' and 'recording also exist, but it does not make sense to set them manually.
@@ -619,11 +624,11 @@ def set_trial_status(trial_id, status):
     requests.patch(API_URL+"trials/{}/".format(trial_id), data={'status': status},
                      headers = {"Authorization": "Token {}".format(API_TOKEN)})
     
-def set_session_subject(session_id, subject_id):
+def set_session_subject(session_id, subject_id, API_URL, API_TOKEN):
     requests.patch(API_URL+"sessions/{}/".format(session_id), data={'subject': subject_id},
                      headers = {"Authorization": "Token {}".format(API_TOKEN)})  
 
-def get_syncd_videos(trial_id,session_path):
+def get_syncd_videos(trial_id,session_path, API_URL, API_TOKEN):
     trial = requests.get("{}trials/{}/".format(API_URL,trial_id),
                          headers = {"Authorization": "Token {}".format(API_TOKEN)}).json()
     trial_name = trial['name']
@@ -642,54 +647,54 @@ def get_syncd_videos(trial_id,session_path):
         
         
 def download_session(session_id, sessionBasePath= None,
-                     zipFolder=False,writeToDB=False, downloadVideos=True):
+                     zipFolder=False,writeToDB=False, downloadVideos=True, API_URL=None, API_TOKEN=None):
     print('\nDownloading {}'.format(session_id))
     
     if sessionBasePath is None:
         sessionBasePath = os.path.join(os.getcwd(),'Data')
     
-    session = get_session_json(session_id)
+    session = get_session_json(session_id, API_URL, API_TOKEN)
     session_path = os.path.join(sessionBasePath,'OpenCapData_' + session_id) 
     
-    calib_id = get_calibration_trial_id(session_id)
-    neutral_id = get_neutral_trial_id(session_id)
+    calib_id = get_calibration_trial_id(session_id, API_URL, API_TOKEN)
+    neutral_id = get_neutral_trial_id(session_id, API_URL, API_TOKEN)
     dynamic_ids = [t['id'] for t in session['trials'] if (t['name'] != 'calibration' and t['name'] !='neutral')]  
     
     # Calibration
     try:
-        get_camera_mapping(session_id, session_path)
+        get_camera_mapping(session_id, session_path, API_URL, API_TOKEN)
         if downloadVideos:
             download_videos_from_server(session_id,calib_id,
                                  isCalibration=True,isStaticPose=False,
-                                 session_path = session_path) 
+                                 session_path = session_path, API_URL=API_URL, API_TOKEN=API_TOKEN) 
 
-        get_calibration(session_id,session_path)
+        get_calibration(session_id,session_path, API_URL, API_TOKEN)
     except:
         pass
     
     # Neutral
     try:
-        modelName = get_model_and_metadata(session_id,session_path)
-        get_motion_data(neutral_id,session_path)
+        modelName = get_model_and_metadata(session_id,session_path, API_URL, API_TOKEN)
+        get_motion_data(neutral_id,session_path, API_URL, API_TOKEN)
         if downloadVideos:
             download_videos_from_server(session_id,neutral_id,
                              isCalibration=False,isStaticPose=True,
-                             session_path = session_path)
+                             session_path = session_path, API_URL=API_URL, API_TOKEN=API_TOKEN)
 
-        get_syncd_videos(neutral_id,session_path)
+        get_syncd_videos(neutral_id,session_path, API_URL, API_TOKEN)
     except:
         pass
 
     # Dynamic
     for dynamic_id in dynamic_ids:
         try:
-            get_motion_data(dynamic_id,session_path)
+            get_motion_data(dynamic_id,session_path, API_URL, API_TOKEN)
             if downloadVideos:
                 download_videos_from_server(session_id,dynamic_id,
                          isCalibration=False,isStaticPose=False,
-                         session_path = session_path)
+                         session_path = session_path, API_URL=API_URL, API_TOKEN=API_TOKEN)
 
-            get_syncd_videos(dynamic_id,session_path)
+            get_syncd_videos(dynamic_id,session_path, API_URL, API_TOKEN)
         except:
             pass
         
@@ -716,7 +721,7 @@ def download_session(session_id, sessionBasePath= None,
         # If not in cache, download from s3.
         if not os.path.exists(geometryDir):
             os.makedirs(geometryDir, exist_ok=True)
-            get_geometries(session_path, modelName=modelName)
+            get_geometries(session_path, modelName=modelName, API_URL=API_URL, API_TOKEN=API_TOKEN)
         geometryDirEnd = os.path.join(session_path, 'OpenSimData', 'Model', 'Geometry')
         shutil.copytree(geometryDir, geometryDirEnd)
     except:
@@ -741,7 +746,7 @@ def download_session(session_id, sessionBasePath= None,
     # Write zip as a result to last trial for now
     if writeToDB:
         post_file_to_trial(session_zip,dynamic_ids[-1],tag='session_zip',
-                           device_id='all')    
+                           device_id='all', API_URL=API_URL, API_TOKEN=API_TOKEN)    
     
 def cross_corr(y1, y2,multCorrGaussianStd=None,visualize=False):
     """Calculates the cross correlation and lags without normalization.

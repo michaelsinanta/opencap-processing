@@ -531,7 +531,7 @@ def generateExternalFunction(
         OpenSimModel="LaiUhlrich2022",
         treadmill=False, build_externalFunction=True, verifyID=True, 
         externalFunctionName='F', overwrite=False,
-        useExpressionGraphFunction=True, contact_side='all'):
+        useExpressionGraphFunction=True, contact_side='all', use_local_data=False):
 
     # %% Process settings.
     pathCWD = os.getcwd()
@@ -1544,7 +1544,7 @@ def generateExternalFunction(
         buildExternalFunction(
             externalFunctionName, pathDCAD, pathOutputExternalFunctionFolder,
             3*nCoordinates, treadmill=treadmill, 
-            useExpressionGraphFunction=useExpressionGraphFunction)
+            useExpressionGraphFunction=useExpressionGraphFunction, use_local_data=use_local_data)
         
     # %% Verification.
     if verifyID:
@@ -1673,7 +1673,7 @@ def getF_expressingGraph(dim, script_name):
 
 # %% Compile external function.
 def buildExternalFunction(filename, pathDCAD, CPP_DIR, nInputs,
-                          treadmill=False, useExpressionGraphFunction=True):       
+                          treadmill=False, useExpressionGraphFunction=True, use_local_data=False):       
     
     # %% Part 1: build expression graph (i.e., generate foo.py).
     pathMain = os.getcwd()
@@ -1689,27 +1689,28 @@ def buildExternalFunction(filename, pathDCAD, CPP_DIR, nInputs,
         BIN_DIR = os.path.join(OpenSimADOS_DIR, 'bin')
         SDK_DIR = os.path.join(OpenSimADOS_DIR, 'sdk')
         # Download libraries if not existing locally.
-        if not os.path.exists(BIN_DIR):
-            url = 'https://sourceforge.net/projects/opensimad/files/windows.zip'
-            zipfilename = 'windows.zip'
-            try:
-                download_file(url, zipfilename)
-            except:
+        if not use_local_data:
+            if not os.path.exists(BIN_DIR):
+                url = 'https://sourceforge.net/projects/opensimad/files/windows.zip'
+                zipfilename = 'windows.zip'
                 try:
-                    download_file_2(url, zipfilename)
+                    download_file(url, zipfilename)
                 except:
-                    error_msg = """ \n\n\n
-                    Problem when downloading third-party libraries. You can download them manually:
-                        1. Download the zip file hosted here: {},
-                        2. Extract the files, and
-                        3. Copy then under: <local_path>/opencap-processing/UtilsDynamicSimulations/OpenSimAD/opensimAD-install.
-                    You should have:
-                        1. <local_path>/opencap-processing/UtilsDynamicSimulations/OpenSimAD/opensimAD-install/windows/bin and
-                        2. <local_path>/opencap-processing/UtilsDynamicSimulations/OpenSimAD/opensimAD-install/windows/sdk \n\n\n""".format(url)
-                    raise ValueError(error_msg)                    
-            with zipfile.ZipFile('windows.zip', 'r') as zip_ref:
-                zip_ref.extractall(OpenSimAD_DIR)
-            os.remove('windows.zip')
+                    try:
+                        download_file_2(url, zipfilename)
+                    except:
+                        error_msg = """ \n\n\n
+                        Problem when downloading third-party libraries. You can download them manually:
+                            1. Download the zip file hosted here: {},
+                            2. Extract the files, and
+                            3. Copy then under: <local_path>/opencap-processing/UtilsDynamicSimulations/OpenSimAD/opensimAD-install.
+                        You should have:
+                            1. <local_path>/opencap-processing/UtilsDynamicSimulations/OpenSimAD/opensimAD-install/windows/bin and
+                            2. <local_path>/opencap-processing/UtilsDynamicSimulations/OpenSimAD/opensimAD-install/windows/sdk \n\n\n""".format(url)
+                        raise ValueError(error_msg)                    
+                with zipfile.ZipFile('windows.zip', 'r') as zip_ref:
+                    zip_ref.extractall(OpenSimAD_DIR)
+                os.remove('windows.zip')
 
         # Get the list of available generators
         available_generators_output = subprocess.check_output(['cmake', '--help'], universal_newlines=True)
@@ -1726,27 +1727,28 @@ def buildExternalFunction(filename, pathDCAD, CPP_DIR, nInputs,
     elif os_system == 'Linux':
         OpenSimADOS_DIR = os.path.join(OpenSimAD_DIR, 'linux')
         # Download libraries if not existing locally.
-        if not os.path.exists(os.path.join(OpenSimAD_DIR, 'linux', 'lib')):
-            url = 'https://sourceforge.net/projects/opensimad/files/linux.tar.gz'
-            zipfilename = 'linux.tar.gz'                
-            try:
-                download_file(url, zipfilename)
-            except:
+        if not use_local_data:
+            if not os.path.exists(os.path.join(OpenSimAD_DIR, 'linux', 'lib')):
+                url = 'https://sourceforge.net/projects/opensimad/files/linux.tar.gz'
+                zipfilename = 'linux.tar.gz'                
                 try:
-                    download_file_2(url, zipfilename)
+                    download_file(url, zipfilename)
                 except:
-                    error_msg = """ \n\n\n
-                    Problem when downloading third-party libraries. You can download them manually:
-                        1. Download the tar file hosted here: {},
-                        2. Extract the files, and
-                        3. Copy then under: <local_path>/opencap-processing/UtilsDynamicSimulations/OpenSimAD/opensimAD-install.
-                    You should have:
-                        1. <local_path>/opencap-processing/UtilsDynamicSimulations/OpenSimAD/opensimAD-install/linux/lib and
-                        2. <local_path>/opencap-processing/UtilsDynamicSimulations/OpenSimAD/opensimAD-install/linux/include \n\n\n""".format(url)
-                    raise ValueError(error_msg) 
-            cmd_tar = 'tar -xf linux.tar.gz -C "{}"'.format(OpenSimAD_DIR)
-            os.system(cmd_tar)
-            os.remove('linux.tar.gz')
+                    try:
+                        download_file_2(url, zipfilename)
+                    except:
+                        error_msg = """ \n\n\n
+                        Problem when downloading third-party libraries. You can download them manually:
+                            1. Download the tar file hosted here: {},
+                            2. Extract the files, and
+                            3. Copy then under: <local_path>/opencap-processing/UtilsDynamicSimulations/OpenSimAD/opensimAD-install.
+                        You should have:
+                            1. <local_path>/opencap-processing/UtilsDynamicSimulations/OpenSimAD/opensimAD-install/linux/lib and
+                            2. <local_path>/opencap-processing/UtilsDynamicSimulations/OpenSimAD/opensimAD-install/linux/include \n\n\n""".format(url)
+                        raise ValueError(error_msg) 
+                cmd_tar = 'tar -xf linux.tar.gz -C "{}"'.format(OpenSimAD_DIR)
+                os.system(cmd_tar)
+                os.remove('linux.tar.gz')
         cmd1 = 'cmake "' + pathBuildExpressionGraph + '" -DTARGET_NAME:STRING="' + filename + '" -DSDK_DIR:PATH="' + OpenSimADOS_DIR + '" -DCPP_DIR:PATH="' + CPP_DIR + '"'
         cmd2 = "make"
         BIN_DIR = pathBuild
@@ -1754,27 +1756,28 @@ def buildExternalFunction(filename, pathDCAD, CPP_DIR, nInputs,
     elif os_system == 'Darwin':
         OpenSimADOS_DIR = os.path.join(OpenSimAD_DIR, 'macOS')
         # Download libraries if not existing locally.
-        if not os.path.exists(os.path.join(OpenSimAD_DIR, 'macOS', 'lib')):
-            url = 'https://sourceforge.net/projects/opensimad/files/macOS.tgz'
-            zipfilename = 'macOS.tgz'                
-            try:
-                download_file(url, zipfilename)
-            except:
+        if not use_local_data:
+            if not os.path.exists(os.path.join(OpenSimAD_DIR, 'macOS', 'lib')):
+                url = 'https://sourceforge.net/projects/opensimad/files/macOS.tgz'
+                zipfilename = 'macOS.tgz'                
                 try:
-                    download_file_2(url, zipfilename)
+                    download_file(url, zipfilename)
                 except:
-                    error_msg = """ \n\n\n
-                    Problem when downloading third-party libraries. You can download them manually:
-                        1. Download the tar file hosted here: {},
-                        2. Extract the files, and
-                        3. Copy then under: <local_path>/opencap-processing/UtilsDynamicSimulations/OpenSimAD/opensimAD-install.
-                    You should have:
-                        1. <local_path>/opencap-processing/UtilsDynamicSimulations/OpenSimAD/opensimAD-install/macOS/lib and
-                        2. <local_path>/opencap-processing/UtilsDynamicSimulations/OpenSimAD/opensimAD-install/macOS/include \n\n\n""".format(url)
-                    raise ValueError(error_msg) 
-            cmd_tar = 'tar -xf macOS.tgz -C "{}"'.format(OpenSimAD_DIR)
-            os.system(cmd_tar)
-            os.remove('macOS.tgz')
+                    try:
+                        download_file_2(url, zipfilename)
+                    except:
+                        error_msg = """ \n\n\n
+                        Problem when downloading third-party libraries. You can download them manually:
+                            1. Download the tar file hosted here: {},
+                            2. Extract the files, and
+                            3. Copy then under: <local_path>/opencap-processing/UtilsDynamicSimulations/OpenSimAD/opensimAD-install.
+                        You should have:
+                            1. <local_path>/opencap-processing/UtilsDynamicSimulations/OpenSimAD/opensimAD-install/macOS/lib and
+                            2. <local_path>/opencap-processing/UtilsDynamicSimulations/OpenSimAD/opensimAD-install/macOS/include \n\n\n""".format(url)
+                        raise ValueError(error_msg) 
+                cmd_tar = 'tar -xf macOS.tgz -C "{}"'.format(OpenSimAD_DIR)
+                os.system(cmd_tar)
+                os.remove('macOS.tgz')
         cmd1 = 'cmake -DCMAKE_OSX_ARCHITECTURES="x86_64" "' + pathBuildExpressionGraph + '" -DTARGET_NAME:STRING="' + filename + '" -DSDK_DIR:PATH="' + OpenSimADOS_DIR + '" -DCPP_DIR:PATH="' + CPP_DIR + '"'
         cmd2 = "make"
         BIN_DIR = pathBuild
@@ -2283,10 +2286,11 @@ def plotResultsOpenSimAD(dataDir, subject, motion_filename, settings,
     
 # %% Process inputs for optimal control problem.   
 def processInputsOpenSimAD(baseDir, dataFolder, session_id, trial_name,
-                           motion_type, time_window=[], repetition=None,
-                           treadmill_speed=0, contact_side='all',
+                           motion_type, time_window, repetition,
+                           treadmill_speed, contact_side, use_local_data=False,
                            overwrite=False, useExpressionGraphFunction=True):
-        
+
+    # %% Inputs.
     # Path session folder.
     sessionFolder =  os.path.join(dataFolder, session_id)
     
@@ -2295,8 +2299,9 @@ def processInputsOpenSimAD(baseDir, dataFolder, session_id, trial_name,
                              trial_name + '.mot') 
     if not os.path.exists(pathTrial) or overwrite:
         print('Download kinematic data and/or model.')
-        _, _ = download_kinematics(session_id, sessionFolder, 
-                                   trialNames=[trial_name])
+        if not use_local_data:
+            _, _ = download_kinematics(session_id, sessionFolder, 
+                                       trialNames=[trial_name])
         
     # Get metadata
     metadata = import_metadata(os.path.join(sessionFolder, 'sessionMetadata.yaml'))
@@ -2327,6 +2332,7 @@ def processInputsOpenSimAD(baseDir, dataFolder, session_id, trial_name,
     
     # Get settings.
     settings = get_setup(motion_type)
+    print(f"Type of settings after get_setup: {type(settings)}") # DEBUG LINE
     # Add time to settings if not specified.
     pathMotionFile = os.path.join(sessionFolder, 'OpenSimData', 'Kinematics',
                                   trial_name + '.mot')

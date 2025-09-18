@@ -178,7 +178,12 @@ def main():
     trial_name = args.trial_name
     session_type = 'overground' # Options are 'overground' and 'treadmill'.
     motion_type = "walking"
-    repetition = None
+    if not 'repetition' in locals():
+        repetition = None
+    if not 'treadmill_speed' in locals():
+        treadmill_speed = 0
+    if not 'contact_side' in locals():
+        contact_side = 'all'
     # Set to True to solve the optimal control problem.
     solveProblem = True
     # Set to True to analyze the results of the optimal control problem. If you
@@ -206,7 +211,7 @@ def main():
     with multiprocessing.Pool(processes=multiprocessing.cpu_count()) as pool:
         results = pool.starmap(process_single_window, [
             (baseDir, dataFolder, session_id, trial_name, motion_type,
-             current_time_window, repetition, treadmill_speed, contact_side,
+             [win_start, win_end], repetition, treadmill_speed, contact_side,
              solveProblem, analyzeResults, trial_name, i)
             for i, (win_start, win_end) in enumerate(windows)
         ])

@@ -233,7 +233,7 @@ def main():
                 f.write(f'name {os.path.basename(output_path)}\n')
                 f.write(f'datarows {len(df)}\n')
                 f.write(f'datacolumns {len(df.columns)}\n')
-                f.write(f'range {df['time'].min()} {df['time'].max()}\n')
+                f.write(f"range {df['time'].min()} {df['time'].max()}\n")
                 f.write('endheader\n')
                 f.write('\t'.join(df.columns) + '\n')
                 df.to_csv(f, sep='\t', index=False, header=False)

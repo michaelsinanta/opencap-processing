@@ -956,14 +956,15 @@ def run_tracking(baseDir, dataDir, subject, settings, case='0',
     # We use an orthogonal third-order radau collocation scheme.
     d = 3 # interpolating polynomial.
     tau = ca.collocation_points(d,'radau')
-    collocation_matrices = ca.collocation_interpolators(tau)
-    C = np.array(collocation_matrices[:-1]) 
-    D = np.array(collocation_matrices[-1])
+    [C,D] = ca.collocation_interpolators(tau)
+    # collocation_matrices = ca.collocation_interpolators(tau)
+    # C = np.array(collocation_matrices[:-1]) 
+    # D = np.array(collocation_matrices[-1])
 
-    print("C shape =", C.shape) 
-    print(C)
-    print("D shape =", D.shape) 
-    print(D)
+    # print("C shape =", C.shape) 
+    # print(C)
+    # print("D shape =", D.shape) 
+    # print(D)
     if d == 3:  
         B = [0, 0.376403062700467, 0.512485826188421, 0.111111111111111]
     elif d == 2:

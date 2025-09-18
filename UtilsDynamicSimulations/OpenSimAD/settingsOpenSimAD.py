@@ -250,7 +250,7 @@ def get_setup(motion_type):
         'enableLimitTorques': True,
         'filter_Qs_toTrack': True,
         'cutoff_freq_Qs': 6,
-        'meshDensity': 100}
+        'meshDensity': 20}
     
     # This is a non-periodic walking formulation. It helps to start .5s before
     # and end .3 seconds after

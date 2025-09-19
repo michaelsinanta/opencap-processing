@@ -183,6 +183,8 @@ def main():
     parser = argparse.ArgumentParser(description='Process OpenCap motion data in windows.')
     parser.add_argument('--session_id', type=str, required=True, help='The ID of the OpenCap session.')
     parser.add_argument('--trial_name', type=str, required=True, help='The name of the trial to simulate.')
+    parser.add_argument('--start_time', type=float, help='Start time of the analysis window.')
+    parser.add_argument('--end_time', type=float, help='End time of the analysis window.')
     
     args = parser.parse_args()
 
@@ -191,9 +193,12 @@ def main():
     trial_name = args.trial_name
     session_type = 'overground' # Options are 'overground' and 'treadmill'.
     motion_type = "walking"
-    repetition = None # Explicitly initialize
-    treadmill_speed = 0 # Explicitly initialize
-    contact_side = 'all' # Explicitly initialize
+    if not 'repetition' in locals():
+        repetition = None
+    if not 'treadmill_speed' in locals():
+        treadmill_speed = 0
+    if not 'contact_side' in locals():
+        contact_side = 'all'
     # Set to True to solve the optimal control problem.
     solveProblem = True
     # Set to True to analyze the results of the optimal control problem. If you
@@ -208,10 +213,21 @@ def main():
 
     sessionFolder =  os.path.join(dataFolder, session_id)
     pathTrial = os.path.join(sessionFolder, 'OpenSimData', 'Kinematics', trial_name + '.mot') 
-    start_time, end_time = get_mot_time_range(pathTrial)
+    
+    # Use provided start_time and end_time, or determine from mot file if not provided
+    if args.start_time is not None:
+        start_time = args.start_time
+    else:
+        start_time, _ = get_mot_time_range(pathTrial)
+
+    if args.end_time is not None:
+        end_time = args.end_time
+    else:
+        _, end_time = get_mot_time_range(pathTrial)
 
     if start_time is None or end_time is None:
-        return []
+        print("Error: Could not determine time range for analysis. Please provide --start_time and --end_time or ensure the .mot file exists and is valid.")
+        return
     
     starts = np.arange(start_time, end_time, 1.0)
     windows = [[s, min(s + 1.0, end_time)] for s in starts]

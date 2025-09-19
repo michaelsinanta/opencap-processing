@@ -92,33 +92,46 @@ def process_single_window(baseDir, dataFolder, session_id, trial_name, motion_ty
     current_case = f'{case_prefix}_window_{window_index}'
     print(f"Processing window: {current_time_window} with case: {current_case}")
 
-    # %% Setup.
-    # These variables are passed as arguments now.
-    settings = processInputsOpenSimAD(baseDir, dataFolder, session_id, trial_name,
-                                      motion_type, current_time_window, repetition,
-                                      treadmill_speed, contact_side, use_local_data=True)
+    grf_file_path = None
+    optimaltrajectories_file_path = None
 
-    # %% Simulation.
-    run_tracking(baseDir, dataFolder, session_id, settings, case=current_case,
-                  solveProblem=solveProblem, analyzeResults=analyzeResults)
+    try:
+        # %% Setup.
+        # These variables are passed as arguments now.
+        settings = processInputsOpenSimAD(baseDir, dataFolder, session_id, trial_name,
+                                          motion_type, current_time_window, repetition,
+                                          treadmill_speed, contact_side, use_local_data=True)
 
-    # Store the path to the generated GRF resultant file
-    grf_file_path = os.path.join(
-        dataFolder, session_id, 'OpenSimData', 'DynamicSimulations', trial_name,
-        f'GRF_resultant_{trial_name}_{current_case}.mot')
+        # %% Simulation.
+        run_tracking(baseDir, dataFolder, session_id, settings, case=current_case,
+                      solveProblem=solveProblem, analyzeResults=analyzeResults)
 
-    # Rename/move optimaltrajectories.npy to include the case identifier
-    original_npy_path = os.path.join(
-        dataFolder, session_id, 'OpenSimData', 'DynamicSimulations', trial_name, 'optimaltrajectories.npy')
-    new_npy_path = os.path.join(
-        dataFolder, session_id, 'OpenSimData', 'DynamicSimulations', trial_name,
-        f'optimaltrajectories_{trial_name}_{current_case}.npy')
+        # Store the path to the generated GRF resultant file
+        potential_grf_path = os.path.join(
+            dataFolder, session_id, 'OpenSimData', 'DynamicSimulations', trial_name,
+            f'GRF_resultant_{trial_name}_{current_case}.mot')
+        if os.path.exists(potential_grf_path):
+            grf_file_path = potential_grf_path
+        else:
+            print(f"Warning: GRF file not found for window {current_time_window} after simulation.")
 
-    if os.path.exists(original_npy_path):
-        os.rename(original_npy_path, new_npy_path)
-        optimaltrajectories_file_path = new_npy_path
-    else:
-        print(f"Warning: {original_npy_path} not found after processing window {current_time_window}.")
+        # Rename/move optimaltrajectories.npy to include the case identifier
+        original_npy_path = os.path.join(
+            dataFolder, session_id, 'OpenSimData', 'DynamicSimulations', trial_name, 'optimaltrajectories.npy')
+        new_npy_path = os.path.join(
+            dataFolder, session_id, 'OpenSimData', 'DynamicSimulations', trial_name,
+            f'optimaltrajectories_{trial_name}_{current_case}.npy')
+
+        if os.path.exists(original_npy_path):
+            os.rename(original_npy_path, new_npy_path)
+            optimaltrajectories_file_path = new_npy_path
+        else:
+            print(f"Warning: Optimal trajectories NPY file not found for window {current_time_window} after simulation. Expected at {original_npy_path}")
+
+    except Exception as e:
+        print(f"Error processing window {current_time_window} for trial {trial_name}: {e}")
+        # Return None for both paths if an error occurs
+        grf_file_path = None
         optimaltrajectories_file_path = None
 
     return grf_file_path, optimaltrajectories_file_path
@@ -178,12 +191,9 @@ def main():
     trial_name = args.trial_name
     session_type = 'overground' # Options are 'overground' and 'treadmill'.
     motion_type = "walking"
-    if not 'repetition' in locals():
-        repetition = None
-    if not 'treadmill_speed' in locals():
-        treadmill_speed = 0
-    if not 'contact_side' in locals():
-        contact_side = 'all'
+    repetition = None # Explicitly initialize
+    treadmill_speed = 0 # Explicitly initialize
+    contact_side = 'all' # Explicitly initialize
     # Set to True to solve the optimal control problem.
     solveProblem = True
     # Set to True to analyze the results of the optimal control problem. If you
@@ -263,6 +273,17 @@ def main():
         print(f"Full optimaltrajectories data saved to: {output_npy_file}")
     else:
         print("No optimaltrajectories data to save.")
+
+    # %% Summary Report
+    num_total_windows = len(windows)
+    num_successful_windows = len(grf_file_paths) # Since we filter out None
+    num_failed_windows = num_total_windows - num_successful_windows
+
+    print("\n--- Processing Summary ---")
+    print(f"Total windows attempted: {num_total_windows}")
+    print(f"Successfully processed windows: {num_successful_windows}")
+    print(f"Failed windows: {num_failed_windows}")
+    print("------------------------")
 
     # %% Plots. (This section will be modified later to handle concatenated data)
     # To compare different cases, add to the cases list, eg cases=['0','1'].

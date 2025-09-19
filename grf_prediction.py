@@ -210,12 +210,17 @@ def main():
     pathTrial = os.path.join(sessionFolder, 'OpenSimData', 'Kinematics', trial_name + '.mot') 
     start_time, end_time = get_mot_time_range(pathTrial)
 
-    if start_time is not None and end_time is not None:
-        window_starts = np.arange(start_time, end_time, 1.0)
-        window_ends = np.minimum(window_starts + 1.0, end_time)
-        windows = list(zip(window_starts, window_ends))
-    else:
-        windows = []
+    if start_time is None or end_time is None:
+        return []
+    
+    starts = np.arange(start_time, end_time, 1.0)
+    windows = [[s, min(s + 1.0, end_time)] for s in starts]
+
+    if len(windows) > 1:
+        last_dur = windows[-1][1] - windows[-1][0]
+        if 0 < last_dur < 0.5:
+            windows[-2][1] = windows[-1][1]
+            windows.pop()
 
     # Process windows in parallel
     with multiprocessing.Pool(processes=multiprocessing.cpu_count()) as pool:

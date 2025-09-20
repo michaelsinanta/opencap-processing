@@ -2735,5 +2735,5 @@ def run_tracking(baseDir, dataDir, subject, settings, case='0',
             optimaltrajectories[case]['passive_muscle_torques'] = pMT_opt
             optimaltrajectories[case]['passive_muscle_torques'] = aMT_opt
                 
-        np.save(os.path.join(pathResults, 'optimaltrajectories.npy'),
+        np.save(os.path.join(pathResults, f'optimaltrajectories_{case}.npy'),
                 optimaltrajectories)

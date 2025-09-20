@@ -1793,7 +1793,12 @@ def buildExternalFunction(filename, pathDCAD, CPP_DIR, nInputs,
         os.system(cmd2w)
 
     fooName = "foo"
-    path_external_filename_foo = os.path.join(BIN_DIR, fooName + '.py')
+    # Use pathBuild, not BIN_DIR, for the generated foo.py when using ExpressionGraphFunction
+    if useExpressionGraphFunction:
+        path_external_filename_foo = os.path.join(pathBuild, fooName + '.py')
+    else:
+        path_external_filename_foo = os.path.join(BIN_DIR, fooName + '.py')
+
     if useExpressionGraphFunction:
         shutil.copy2(path_external_filename_foo, CPP_DIR)
         os.rename(os.path.join(CPP_DIR, fooName + '.py'), os.path.join(CPP_DIR, filename + '.py'))

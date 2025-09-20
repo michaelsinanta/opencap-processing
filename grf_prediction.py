@@ -106,7 +106,6 @@ def process_single_window(baseDir, dataFolder, session_id, trial_name, motion_ty
         run_tracking(baseDir, dataFolder, session_id, settings, case=current_case,
                       solveProblem=solveProblem, analyzeResults=analyzeResults)
 
-        # Store the path to the generated GRF resultant file
         potential_grf_path = os.path.join(
             dataFolder, session_id, 'OpenSimData', 'DynamicSimulations', trial_name,
             f'GRF_resultant_{trial_name}_{current_case}.mot')
@@ -115,22 +114,16 @@ def process_single_window(baseDir, dataFolder, session_id, trial_name, motion_ty
         else:
             print(f"Warning: GRF file not found for window {current_time_window} after simulation.")
 
-        # Rename/move optimaltrajectories.npy to include the case identifier
-        original_npy_path = os.path.join(
-            dataFolder, session_id, 'OpenSimData', 'DynamicSimulations', trial_name, 'optimaltrajectories.npy')
-        new_npy_path = os.path.join(
+        optimaltrajectories_file_path = os.path.join(
             dataFolder, session_id, 'OpenSimData', 'DynamicSimulations', trial_name,
-            f'optimaltrajectories_{trial_name}_{current_case}.npy')
+            f'optimaltrajectories_{current_case}.npy')
 
-        if os.path.exists(original_npy_path):
-            os.rename(original_npy_path, new_npy_path)
-            optimaltrajectories_file_path = new_npy_path
-        else:
-            print(f"Warning: Optimal trajectories NPY file not found for window {current_time_window} after simulation. Expected at {original_npy_path}")
+        if not os.path.exists(optimaltrajectories_file_path):
+            print(f"Warning: Optimal trajectories NPY file not found for window {current_time_window} after simulation. Expected at {optimaltrajectories_file_path}")
+            optimaltrajectories_file_path = None
 
     except Exception as e:
         print(f"Error processing window {current_time_window} for trial {trial_name}: {e}")
-        # Return None for both paths if an error occurs
         grf_file_path = None
         optimaltrajectories_file_path = None
 

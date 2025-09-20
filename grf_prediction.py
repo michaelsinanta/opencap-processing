@@ -107,7 +107,7 @@ def process_single_window(baseDir, dataFolder, session_id, trial_name, motion_ty
                       solveProblem=solveProblem, analyzeResults=analyzeResults)
 
         potential_grf_path = os.path.join(
-            dataFolder, session_id, 'OpenSimData', 'DynamicSimulations', trial_name,
+            dataFolder, session_id, 'OpenSimData', 'Dynamics', trial_name,
             f'GRF_resultant_{trial_name}_{current_case}.mot')
         if os.path.exists(potential_grf_path):
             grf_file_path = potential_grf_path
@@ -115,7 +115,7 @@ def process_single_window(baseDir, dataFolder, session_id, trial_name, motion_ty
             print(f"Warning: GRF file not found for window {current_time_window} after simulation.")
 
         optimaltrajectories_file_path = os.path.join(
-            dataFolder, session_id, 'OpenSimData', 'DynamicSimulations', trial_name,
+            dataFolder, session_id, 'OpenSimData', 'Dynamics', trial_name,
             f'optimaltrajectories_{current_case}.npy')
 
         if not os.path.exists(optimaltrajectories_file_path):
